@@ -152,7 +152,7 @@ T = 1
 r = 0.05
 sigma = 0.3
 dt = 0.01
-M = 500
+M = 100000
 
 # Generate the brownian path
 stock_path = geometric_brownian_motion(S0, T, dt, sigma, r, M)
