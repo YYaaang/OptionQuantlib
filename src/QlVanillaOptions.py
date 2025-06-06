@@ -24,7 +24,7 @@ class QlVanillaOptions():
             df = stock_df[['codes', 'price_quote', 'processes']]
         else:
             raise ValueError('wrong stock_df type')
-        self.stocks_df = df
+        self.stocks_df = df.copy()
         columns = ['codes', 'price_quote', 'processes', 'strike_prices', 'maturity_dates',
                    'types', 'payoff', 'maturity', 'engines']
         self.options_df = pd.DataFrame(columns=columns)
@@ -77,8 +77,8 @@ class QlVanillaOptions():
         new_df = pd.DataFrame(new_rows)
 
         # 为df_10和df_3添加临时键列
-        self.stocks_df['key'] = 1
-        new_df['key'] = 1
+        self.stocks_df.loc[:, 'key'] = 1
+        new_df.loc[:, 'key'] = 1
         new_df = pd.merge(self.stocks_df, new_df, on='key').drop('key', axis=1)
 
         options = [ql.EuropeanOption(p, e) for p, e in zip(new_df['payoff'].values, new_df['maturity'].values)]

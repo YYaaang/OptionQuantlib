@@ -22,7 +22,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 #%%
-n_paths = 20000
+n_paths = 2000
 S0 = 100.0  # Initial stock price
 V0 = 0.04  # Initial volatility
 kappa = 2.0  # Mean reversion speed of volatility
