@@ -1,5 +1,6 @@
 #%%
 import numpy as np
+import time
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from matplotlib import cm
@@ -152,7 +153,7 @@ T = 1
 r = 0.05
 sigma = 0.3
 dt = 0.01
-M = 100000
+M = 1000
 
 # Generate the brownian path
 stock_path = geometric_brownian_motion(S0, T, dt, sigma, r, M)
@@ -183,6 +184,7 @@ option_path[0] = option_price
 option_delta = np.zeros(stock_path.shape)
 option_delta[0] = initial_delta
 
+t0 = time.time()
 for t in range(1, len(stock_path)):
     # Update the stock price
     stock_price = stock_path[t]
@@ -203,6 +205,8 @@ for t in range(1, len(stock_path)):
 
     # Update the PnL
     pnl[t] = portfolio[t] + cash[t]
+
+print('no rebalance ', time.time() - t0)
 
 # Plot the PnL, cash account and portfolio value
 # Plot in separate figure the stock price and option price

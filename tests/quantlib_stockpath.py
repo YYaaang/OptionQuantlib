@@ -12,6 +12,9 @@ maturity = 1.0 / 12  # 时间跨度（1个月，约1/12年）
 time_steps = 100  # 时间步数（假设一个月21个交易日）
 num_paths = 100  # 模拟路径数量
 
+dividend_yield = ql.SimpleQuote(dividend_yield)
+volatility = ql.SimpleQuote(volatility)
+
 # 设置QuantLib日历和日期
 calendar = ql.HongKong(ql.HongKong.HKEx)
 today = ql.Date(19, 5, 2025)
@@ -28,10 +31,13 @@ rate_handle = ql.YieldTermStructureHandle(
     ql.FlatForward(today, risk_free_rate, day_count)
 )
 dividend_handle = ql.YieldTermStructureHandle(
-    ql.FlatForward(today, dividend_yield, day_count)
+    ql.FlatForward(today, ql.QuoteHandle(dividend_yield), day_count)
 )
+
+bc_vol = ql.BlackConstantVol(today, calendar, ql.QuoteHandle(volatility), day_count)
+
 vol_handle = ql.BlackVolTermStructureHandle(
-    ql.BlackConstantVol(today, calendar, volatility, day_count)
+    bc_vol
 )
 
 # 设置随机过程（几何布朗运动）

@@ -1,5 +1,6 @@
 import QuantLib as ql
 import numpy as np
+from typing import Union
 
 class QlCalendar:
 
@@ -10,36 +11,58 @@ class QlCalendar:
             calendar='HKEx',
             init_date=ql.Date.todaysDate(),
             init_risk_free_rate=0.05,
-            qlDayCounter:ql.DayCounter=ql.Business252
+            qlDayCounter:ql.DayCounter=ql.Actual365Fixed # ql.Business252  ql.Actual365Fixed
     ):
+        self.callbacks_next_date = []
         # set market
         self.calendar = self.set_calendar(calendar)         # ql.Calendar
         # set dates
-        self.init_date = self._set_evalution_date(init_date)
-        self.today = self.init_date
-        self.set_today(self.init_date)
+        self.init_date = self.set_today(init_date)
+        self.all_trading_dates = np.array([self.init_date])
         self.day_counter = self.set_day_counter(self.calendar, qlDayCounter)     # ql.DayCounter
         # risk_free_rate and risk_free_rate_curve_handle
         self.risk_free_rate = ql.SimpleQuote(init_risk_free_rate)
         self.risk_free_rate_curve_handle = self._set_risk_free_curve()
         #
+        #
         return
 
-    def to_next_trading_date(self):
-        self.today = self.calendar.adjust(self.today + 1)
-        # print(f'next trading date: {self.today}')
-        ql.Settings.instance().evaluationDate = self.today
-        return
+    def today(self):
+        return ql.Settings.instance().evaluationDate
 
     def set_today(self, today):
-        self.today = self._set_evalution_date(today)
-        ql.Settings.instance().evaluationDate = self.today
-        print('today: ', self.today)
-        # if today >= self.today:
-        #     self.today = self._set_evalution_date(today)
-        #     ql.Settings.instance().evaluationDate = self.today
-        # else:
-        #     raise ValueError('today must be larger than past today')
+        today = self._set_evalution_date(today)
+        ql.Settings.instance().evaluationDate = today
+        for callback in self.callbacks_next_date:
+            callback()
+        return today
+
+    def to_next_trading_date(self):
+        ql.Settings.instance().evaluationDate = self.calendar.adjust(self.today() + 1)
+        for callback in self.callbacks_next_date:
+            callback()
+        return self.today()
+
+    def register_callback(self, callback):
+        self.callbacks_next_date.append(callback)
+
+    def get_trading_dates(self, start_date, end: Union[ql.Date, int]=None, includeFirst=False):
+        if isinstance(end, ql.Date):
+            end_date = self.calendar.adjust(end, ql.Preceding)
+            count = self.day_counter.dayCount(start_date, end_date)
+        elif isinstance(end, int):
+            count = end
+        else:
+            raise 'wrong end type'
+
+        current = start_date
+
+        sequence = [current := self.calendar.adjust(current + 1) for _ in range(count)]
+
+        if includeFirst:
+            sequence = [start_date] + sequence
+
+        return np.array(sequence)
 
     def set_risk_free_rate(self, new_risk_free_rate):
         self.risk_free_rate.setValue(new_risk_free_rate)
@@ -109,7 +132,7 @@ class QlCalendar:
             time_unit: str = 'years'
     ):
         if init_date is None:
-            init_date = self.today
+            init_date = self.today()
 
         if time_unit in self.TIME_UNIT:
             if time_unit == 'days':
@@ -172,7 +195,7 @@ if __name__ == '__main__':
 
     end_date = ql.Date(1,2,2023)
 
-    while market.today <= end_date:
-        print(market.today)
+    while market.today() <= end_date:
+        print(market.today())
         market.to_next_trading_date()
     pass
