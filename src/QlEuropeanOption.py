@@ -67,6 +67,7 @@ class QlEuropeanOption:
     def impliedVolatility_and_delta(
             self,
             NPV,
+            pre_vol=np.nan,
             stock_price=None,
     ):
         if stock_price is not None:
@@ -75,24 +76,22 @@ class QlEuropeanOption:
             vol = self.option.impliedVolatility(
                 NPV, self.process
             )
-        except:
+            self.stock_vol_quote.setValue(vol)
             delta = self.option.delta()
-            # if delta > 0.8:
-            #     delta = 1
-            # elif delta < 0.1:
-            #     delta = 0
-            # else:
-            print(f'impliedVolatility_and_delta fail calculation: NPV {NPV}, stock_price {stock_price}')
-            return self.stock_vol_quote.value(), delta
-        self.stock_vol_quote.setValue(vol)
-        return vol, self.option.delta()
+        except:
+            vol = pre_vol
+            self.stock_vol_quote.setValue(vol)
+            delta = self.option.delta()
+            print(f'impliedVolatility_and_delta fail calculation: use pre volatility {vol}, delta {delta}')
+        return vol, delta
 
     def impliedVolatility_and_delta_multi(
             self,
             NPVs,
+            pre_vol=np.nan,  # 如果计算无法获得vol，则使用。
             stock_prices=None,
     ):
-        vols, deltas = np.vectorize(self.impliedVolatility_and_delta)(NPVs, stock_prices)
+        vols, deltas = np.vectorize(self.impliedVolatility_and_delta)(NPVs, pre_vol, stock_prices)
         return vols, deltas
 
     def NPV(self):

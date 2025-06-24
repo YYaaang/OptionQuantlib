@@ -31,7 +31,7 @@ class QlStocks:
 
     def stock(self, code) -> QlStock:
         data = self.ql_df.loc[code]
-        price = self.today_prices[code]
+        # price = self.today_prices[code]
         new_stock = QlStock(
             self.ql_calendar,
             code=code,
@@ -240,7 +240,7 @@ class QlStocks:
             },
             index = pd.Index(code, name='codes')
         )
-        self.ql_df = pd.concat([self.ql_df, new_df])
+        self.ql_df = pd.concat([self.ql_df, new_df], verify_integrity=True)
         return new_df
 
     def _create_dividend_curve(
