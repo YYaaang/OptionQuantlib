@@ -153,6 +153,10 @@ class QlEuropeanOptions:
     #
     #     return new_df
 
+    def impliedVolatility(self, NPV):
+
+        return
+
     def NPV(self, options: [pd.Series, pd.DataFrame] = None):
 
         if options is None:
