@@ -4,7 +4,7 @@ A practical toolkit for European option research using QuantLib, providing conve
 
 ## Project Overview
 
-This project encapsulates QuantLib functionality into a more accessible Python interface, focusing on:
+This project use QuantLib functionality into a more accessible Python interface, focusing on:
 - European option pricing and analysis
 - Calendar and market conventions
 - Stock modeling (including Black-Scholes and other models)
