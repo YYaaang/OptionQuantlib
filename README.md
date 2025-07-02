@@ -13,3 +13,6 @@ This project use QuantLib functionality into a more accessible Python interface,
 - Implied volatility surface analysis
 
 ## Repository Structure
+
+- /samples/ Example notebooks and scripts
+- /src/ # Core implementation
