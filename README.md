@@ -1,5 +1,7 @@
 # Option QuantLib
 
+_This documentation and code comments were generated with AI assistance to enhance technical clarity._
+
 A practical toolkit for European option research using QuantLib, providing convenient wrappers for calendar setup, stock/option modeling, pricing calculations, Greeks, and hedging strategies.
 
 ## Project Overview
@@ -11,8 +13,6 @@ This project encapsulates QuantLib functionality into a more accessible Python i
 - Option Greeks calculation
 - Delta hedging strategies
 - Implied volatility surface analysis
-
-Here's the enhanced markdown section with your data format conversion details clearly incorporated:
 
 # Data Sources
 
@@ -55,3 +55,4 @@ The raw datasets can be downloaded via the links below and processed using our c
    - Compared computed Greeks against broker-reported values
    - Verified volatility surfaces against historical realized volatility
    - Backtested hedging strategies using the SPY dataset
+
