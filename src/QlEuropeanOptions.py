@@ -153,9 +153,8 @@ class QlEuropeanOptions:
     #
     #     return new_df
 
-    def impliedVolatility(self, NPV):
-
-        return
+    def impliedVolatility(self, NPVs):
+        return [self._impliedVolatility(option, npv) for option, npv in zip(self.options_df['options'], NPVs)]
 
     def NPV(self, options: [pd.Series, pd.DataFrame] = None):
 
@@ -257,7 +256,12 @@ class QlEuropeanOptions:
         elif isinstance(codes, pd.DataFrame):
             return codes['options'].values
 
-
+    def _impliedVolatility(self, option, npv):
+        try:
+            return option.impliedVolatility(npv, self.stock.process)
+        except:
+            # print('fail calculate impliedVolatility')
+            return np.nan
 
 if __name__ == '__main__':
     from src.QlStocks import QlStocks

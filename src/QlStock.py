@@ -14,17 +14,30 @@ class QlStock:
             self,
             ql_calendar: QlCalendar,
             code,
-            price_quote: ql.SimpleQuote,
-            dividend_quote,
-            volatility,
+            price: ql.SimpleQuote,
+            dividend: ql.SimpleQuote,
+            volatility: ql.SimpleQuote,
             process_type,
             process
     ):
         self.ql_calendar = ql_calendar
         self.code = code
-        self.price_quote = price_quote
-        self.dividend_quote = dividend_quote
-        self.volatility:ql.SimpleQuote = volatility
+        #
+        if not isinstance(price, ql.SimpleQuote):
+            self.price_quote = ql.SimpleQuote(price)
+        else:
+            self.price_quote = price
+        #
+        if not isinstance(dividend, ql.SimpleQuote):
+            self.dividend_quote = ql.SimpleQuote(dividend)
+        else:
+            self.dividend_quote = dividend
+        #
+        if not isinstance(volatility, ql.SimpleQuote):
+            self.volatility = ql.SimpleQuote(volatility)
+        else:
+            self.volatility = volatility
+
         self.process_type = process_type
         self.process = process
 

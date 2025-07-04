@@ -35,8 +35,8 @@ class QlStocks:
         new_stock = QlStock(
             self.ql_calendar,
             code=code,
-            price_quote=data['price_quote'],
-            dividend_quote=data['dividend_quote'],
+            price=data['price_quote'],
+            dividend=data['dividend_quote'],
             volatility=data['volatility'],
             process_type=data['process_types'],
             process=data['processes'],

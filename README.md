@@ -16,7 +16,9 @@ Here's the enhanced markdown section with your data format conversion details cl
 
 # Data Sources
 
-All options datasets were sourced from Kaggle user [Kyle Graupe](https://www.kaggle.com/kylegraupe)'s high-quality collections:
+All options datasets were sourced from Kaggle user [Kyle Graupe](https://www.kaggle.com/kylegraupe)'s high-quality collections. 
+
+The raw datasets can be downloaded via the links below and processed using our conversion script:
 
 | Ticker | Dataset Period | Link |
 |--------|----------------|------|
@@ -26,7 +28,13 @@ All options datasets were sourced from Kaggle user [Kyle Graupe](https://www.kag
 | NVDA   | 2020-2022 | [Dataset](https://www.kaggle.com/datasets/kylegraupe/nvda-daily-option-chains-q1-2020-to-q4-2022) |
 | QQQ    | 2020-2022 | [Dataset](https://www.kaggle.com/datasets/kylegraupe/qqq-daily-option-chains-q1-2020-to-q4-2022) |
 
-**Format Conversion**: All datasets were converted from CSV to Feather format using Zstandard compression
+**Data Processing Pipeline**:
+1. Download raw CSV files from Kaggle links
+2. Run conversion script:
+   ```bash
+   python data/real_data/to_feather.py --input path/to/raw.csv --output path/to/processed.feather
+   ```
+3. Processed files will be saved in optimized Feather format
 
 **Data Characteristics:**
 - End-of-Day (EOD) options chain data
