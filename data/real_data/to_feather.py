@@ -20,7 +20,13 @@ import time
 #%%
 
 for file_name in all_file_names:
-    print(file_name)
+    new_file_name = file_name.replace('.csv', '.feather')
+    try:
+        pd.read_feather(f'../{new_file_name}')
+        print(file_name, ' exist.')
+        continue
+    except:
+        print(file_name, ' need create.')
     data = pd.read_csv(file_name)
     columns = data.columns
     columns = [s.replace('[', '').replace(']', '').replace(' ', '') for s in columns]
@@ -50,12 +56,11 @@ for file_name in all_file_names:
     else:
         print('length: ', len_of_date)
     # 写入
-    file_name = file_name.replace('.csv', '.feather')
-    data.to_feather(f'../{file_name}', compression='zstd')  # ZSTD压缩效率接近Parquet
+    data.to_feather(f'../{new_file_name}', compression='zstd')  # ZSTD压缩效率接近Parquet
     # 读取
     t0 = time.time()
-    df = pd.read_feather(f'../{file_name}')
-    print(file_name, "- time spent: ", time.time() - t0)
+    df = pd.read_feather(f'../{new_file_name}')
+    print(new_file_name, "- time spent: ", time.time() - t0)
     data = 0
     df = 0
 #%%
