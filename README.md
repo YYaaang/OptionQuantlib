@@ -14,16 +14,6 @@ This project encapsulates QuantLib functionality into a more accessible Python i
 
 Here's the enhanced markdown section with your data format conversion details clearly incorporated:
 
----
-
-# Data Sources
-
-All options datasets were sourced from Kaggle user [Kyle Graupe](https://www.kaggle.com/kylegraupe)'s high-quality collections:
-
-Here's the revised table without the specified columns, while maintaining all other important information:
-
----
-
 # Data Sources
 
 All options datasets were sourced from Kaggle user [Kyle Graupe](https://www.kaggle.com/kylegraupe)'s high-quality collections:
