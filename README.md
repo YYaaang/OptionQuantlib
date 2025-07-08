@@ -32,7 +32,7 @@ The raw datasets can be downloaded via the links below and processed using our c
 1. Download raw CSV files from Kaggle links
 2. Run conversion script:
    ```bash
-   python data/real_data/to_feather.py --input path/to/raw.csv --output path/to/processed.feather
+   python data/real_data/to_feather.py
    ```
 3. Processed files will be saved in optimized Feather format
 
