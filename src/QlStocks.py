@@ -8,6 +8,7 @@ from typing import Union, List
 from src.utils import check_list_length
 from src.QlCalendar import QlCalendar
 from src.QlStock import QlStock
+from src.QlModels import black_scholes_merton_model, heston_model
 
 class QlStocks:
     def __init__(
@@ -48,7 +49,7 @@ class QlStocks:
             self,
             codes,
             stock_prices: Union[float, ql.SimpleQuote, List[Union[int, float, list, ql.SimpleQuote]]]=100,
-            sigma: Union[int, float, List[Union[int, float]]] = 0.2,
+            volatility: Union[int, float, List[Union[int, float]]] = 0.2,
             trading_dates=None,
             settlementDays = 0
     ):
@@ -56,7 +57,7 @@ class QlStocks:
             codes,
             stock_prices = stock_prices,
             trading_dates = trading_dates,
-            sigma = sigma,
+            sigma = volatility,
             dividend_rates = 0.0,
             settlementDays = settlementDays,
             is_merton = False
@@ -66,7 +67,7 @@ class QlStocks:
             self,
             codes=None,
             stock_prices: Union[int, float, ql.SimpleQuote, List[Union[int, float, list, ql.SimpleQuote]]]=100,
-            sigma: Union[int, float, List[Union[int, float]]] = 0.2,
+            volatility: Union[int, float, List[Union[int, float]]] = 0.2,
             dividend_rates: Union[int, float, List[Union[int, float]]]=0.0,
             trading_dates=None,
             settlementDays=0
@@ -75,7 +76,7 @@ class QlStocks:
             codes,
             stock_prices = stock_prices,
             trading_dates=trading_dates,
-            sigma = sigma,
+            sigma = volatility,
             dividend_rates = dividend_rates,
             settlementDays = settlementDays,
             is_merton = True
@@ -94,8 +95,6 @@ class QlStocks:
             trading_dates=None,
             settlementDays=0
     ):
-        process_type = 'heston'
-
         if not (isinstance(codes, list) or isinstance(codes, np.ndarray)):
             codes = [codes]
 
@@ -114,33 +113,19 @@ class QlStocks:
 
         dividend_rates = [ql.SimpleQuote(float(rate)) for rate in dividend_rates]
 
-        dividend_curve_handle = [
-            ql.YieldTermStructureHandle(
-                ql.FlatForward(
-                    settlementDays,  # settlementDays
-                    self.ql_calendar.calendar,
-                    ql.QuoteHandle(rate),
-                    self.ql_calendar.day_counter
-                )
-            ) for rate in dividend_rates
-        ]
+        processes = heston_model(
+            ql_calendar = self.ql_calendar,
+            price_quotes = price_quotes,
+            v0=v0,
+            kappa=kappa,
+            theta=theta,
+            rho=rho,
+            sigma=sigma,
+            dividend_rate_quotes=dividend_rates,
+            settlementDays = settlementDays,
+        )
 
-        processes = [
-            ql.HestonProcess(
-                self.ql_calendar.risk_free_rate_curve_handle,
-                dividend,
-                ql.QuoteHandle(price),
-                v,
-                k,
-                t,
-                s,
-                r
-            )
-            for dividend, price, v, k, t, s, r in
-            zip(dividend_curve_handle, price_quotes, v0, kappa, theta, sigma, rho)
-        ]
-
-        process_type = [process_type] * len(price_quotes)
+        process_type = ['heston'] * len(price_quotes)
 
         # 添加到DataFrame
         new_df = self._add_to_dataframe(
@@ -281,59 +266,25 @@ class QlStocks:
 
         sigma = [ql.SimpleQuote(float(s)) for s in sigma]
 
-        volatility_handle = [
-            ql.BlackVolTermStructureHandle(
-                ql.BlackConstantVol(
-                    settlementDays,
-                    self.ql_calendar.calendar,
-                    ql.QuoteHandle(s),
-                    self.ql_calendar.day_counter)
-            ) for s in sigma
-        ]
+        processes = black_scholes_merton_model(
+            ql_calendar=self.ql_calendar,
+            price_quotes=price_quotes,
+            vol_quotes=sigma,
+            dividend_rate_quotes=dividend_rates,
+            settlementDays=settlementDays,
+            is_merton=is_merton,
+        )
 
         if is_merton:
             process_type = 'black_schole_merton'
-
-            dividend_rates = [ql.SimpleQuote(float(rate)) for rate in dividend_rates]
-
-            dividend_curve_handle = [
-                ql.YieldTermStructureHandle(
-                    ql.FlatForward(
-                        settlementDays,  # settlementDays
-                        self.ql_calendar.calendar,
-                        ql.QuoteHandle(rate),
-                        self.ql_calendar.day_counter
-                    )
-                ) for rate in dividend_rates
-            ]
-
-            process = [
-                ql.BlackScholesMertonProcess(
-                    ql.QuoteHandle(price),
-                    dividend,
-                    self.ql_calendar.risk_free_rate_curve_handle,
-                    vol
-                ) for price, dividend, vol in zip(price_quotes, dividend_curve_handle, volatility_handle)
-            ]
-
         else:
             process_type = 'black_schole'
-            dividend_rates = [None] * len(price_quotes)
 
-            process = [
-                ql.BlackScholesProcess(
-                    ql.QuoteHandle(price),
-                    self.ql_calendar.risk_free_rate_curve_handle,
-                    vol
-                ) for price, vol in zip(price_quotes, volatility_handle)
-            ]
 
         process_type = [process_type] * len(price_quotes)
 
         # 添加到DataFrame
-        new_df = self._add_to_dataframe(codes, price_quotes, dividend_rates, sigma, process_type, process)
-
-        # prices_df = pd.DataFrame(stock_prices, index=new_df['codes'].values)
+        new_df = self._add_to_dataframe(codes, price_quotes, dividend_rates, sigma, process_type, processes)
 
         self._concate_stock_prices(stock_prices, new_df.index.values, trading_dates)
         # self.stock_prices = pd.concat([self.stock_prices, prices_df])

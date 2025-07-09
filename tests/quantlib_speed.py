@@ -6,7 +6,7 @@ import time
 # 基础参数
 spot_price = 100.0
 strike = 100.0
-volatility = 0.2
+volatility = ql.SimpleQuote(0.2)
 risk_free_rate = 0.05
 maturity = 1.0  # 1年
 calculation_date = ql.Date().todaysDate()
@@ -20,7 +20,7 @@ option = ql.VanillaOption(payoff, exercise)
 
 # 配置定价引擎
 riskFreeCurve = ql.FlatForward(calculation_date, risk_free_rate, ql.Actual365Fixed())
-volatilityCurve = ql.BlackConstantVol(calculation_date, ql.TARGET(), volatility, ql.Actual365Fixed())
+volatilityCurve = ql.BlackConstantVol(calculation_date, ql.TARGET(), ql.QuoteHandle(volatility), ql.Actual365Fixed())
 dividend_curve_handle =  ql.YieldTermStructureHandle(
     ql.FlatForward(calculation_date, 0.02, ql.Actual365Fixed())
     )
@@ -39,6 +39,23 @@ print(option.impliedVolatility(15, process))
 #%%
 # time
 print('npv 10000', timeit.timeit(option.NPV, number=10000))
+#%%
+# 查看set Engine 时间
+def set_engine():
+    process = ql.BlackScholesMertonProcess(
+        ql.QuoteHandle(sport_quote),
+        dividend_curve_handle,
+        ql.YieldTermStructureHandle(riskFreeCurve),
+        ql.BlackVolTermStructureHandle(volatilityCurve)
+    )
+    option.setPricingEngine(ql.AnalyticEuropeanEngine(process))
+    return
+print('set_engine 10000', timeit.timeit(set_engine, number=10000))
+#%%
+#
+def set_vol():
+    volatility.setValue(0.3)
+print('set_vol 10000', timeit.timeit(set_vol, number=10000))
 #%%
 # def next_dates():
 #     def next_date():

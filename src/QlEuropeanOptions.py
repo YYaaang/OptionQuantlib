@@ -5,10 +5,11 @@ from QuantLib import PlainVanillaPayoff
 from typing import Optional, Union, List
 import time
 
-from src.utils import check_list_length, set_analytic_engine, set_fd_engine, set_option_name
+from src.utils import check_list_length, set_analytic_engine, set_fd_engine, set_mc_engine, set_option_name
 from src.QlCalendar import QlCalendar
 from src.QlStock import QlStock
 from src.QlEuropeanOption import QlEuropeanOption
+from src.QlModels import black_scholes_merton_model, heston_model
 
 class QlEuropeanOptions:
     """ """
@@ -19,7 +20,7 @@ class QlEuropeanOptions:
         self.ql_calendar = ql_stock.ql_calendar
         self.stock = ql_stock
 
-        self.columns = ['payoff', 'exercise', 'options']
+        self.columns = ['implied_volatility', 'processes', 'payoff', 'exercise', 'options']
 
         self.options_df_index = ['codes', 'types', 'strike', 'maturity']
 
@@ -68,7 +69,9 @@ class QlEuropeanOptions:
         strike_prices, maturity_dates, option_types, codes = check_list_length(
             strike_prices, maturity_dates, option_types, codes)
 
-        new_df = self._payoff_and_exercise(codes, strike_prices, option_types, maturity_dates, qlExercise)
+        new_df = self._payoff_and_exercise(
+            codes, strike_prices, option_types, maturity_dates, qlExercise
+        )
 
         options = [ql.EuropeanOption(p, e) for p, e in zip(new_df['payoff'].values, new_df['exercise'].values)]
 
@@ -77,6 +80,7 @@ class QlEuropeanOptions:
 
         new_df.set_index(self.options_df_index, inplace=True)
         self.options_df = pd.concat([self.options_df, new_df])
+        #
         #
         return new_df['options']
 
@@ -93,7 +97,6 @@ class QlEuropeanOptions:
         #
         return
 
-
     def fd_engines(
             self,
             codes: Union[str, list, np.ndarray, pd.DataFrame] = None,
@@ -107,9 +110,270 @@ class QlEuropeanOptions:
         engine = set_fd_engine(self.stock.process_type, self.stock.process, tGrid, xGrid, vGrid)
         [option.setPricingEngine(engine) for option in options]
 
-        # self.options_df.loc[index, 'engines'] = engine
-        #
         return
+
+    def mc_engines(
+            self,
+            codes: Union[str, list, np.ndarray, pd.DataFrame] = None,
+            steps=2,
+            rng="pseudorandom",  # could use "lowdiscrepancy"
+            numPaths=100000,
+            settlementDays=0,
+    ):
+        options = self._codes_get_options(codes)
+
+        engine = set_mc_engine(self.stock.process_type, self.stock.process, steps, rng, numPaths)
+        [option.setPricingEngine(engine) for option in options]
+
+        return
+
+    def set_analytic_bs_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            implied_volitilities: Union[float, List[float], np.ndarray] = None,
+            settlementDays=0,
+    ):
+        df = self._set_black_scholes_merton(
+            codes, implied_volitilities, settlementDays,
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [ql.AnalyticEuropeanEngine(process) for process in processes]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+
+        return
+
+    def set_fd_bs_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            implied_volitilities: Union[float, List[float], np.ndarray] = None,
+            settlementDays=0,
+            tGrid=100,
+            xGrid=100,
+    ):
+        df = self._set_black_scholes_merton(
+            codes, implied_volitilities, settlementDays,
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [ql.FdBlackScholesVanillaEngine(process, tGrid, xGrid) for process in processes]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+
+        return
+
+    def set_mc_bs_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            implied_volitilities: Union[float, List[float], np.ndarray] = None,
+            steps=2,
+            rng = "pseudorandom",  # could use "lowdiscrepancy"
+            numPaths = 100000,
+            settlementDays=0,
+    ):
+        df = self._set_black_scholes_merton(
+            codes, implied_volitilities, settlementDays,
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [ql.MCEuropeanEngine(process, rng, steps, requiredSamples=numPaths) for process in processes]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+
+        return
+
+
+    def set_analytic_heston_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            v0: Union[float, List[float]] = 0.005,
+            kappa: Union[float, List[float]] = 0.8,
+            theta: Union[float, List[float]] = 0.008,
+            rho: Union[float, List[float]] = 0.2,
+            sigma: Union[float, List[float]] = 0.1,
+            settlementDays=0,
+    ):
+        df = self._set_heston(
+            codes = codes,
+            v0 = v0,
+            kappa = kappa,
+            theta = theta,
+            rho = rho,
+            sigma = sigma,
+            settlementDays = settlementDays
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [ql.AnalyticHestonEngine(ql.HestonModel(process)) for process in processes]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+
+        return
+
+    def set_fd_heston_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            v0: Union[float, List[float]] = 0.005,
+            kappa: Union[float, List[float]] = 0.8,
+            theta: Union[float, List[float]] = 0.008,
+            rho: Union[float, List[float]] = 0.2,
+            sigma: Union[float, List[float]] = 0.1,
+            settlementDays=0,
+            tGrid=100,
+            xGrid=100,
+            vGrid=50
+    ):
+        df = self._set_heston(
+            codes = codes,
+            v0 = v0,
+            kappa = kappa,
+            theta = theta,
+            rho = rho,
+            sigma = sigma,
+            settlementDays = settlementDays
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [
+            ql.FdHestonVanillaEngine(
+                ql.HestonModel(process),
+                tGrid,
+                xGrid,
+                vGrid
+            )
+            for process in processes
+        ]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+        return
+
+    def set_mc_heston_engine(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            v0: Union[float, List[float]] = 0.005,
+            kappa: Union[float, List[float]] = 0.8,
+            theta: Union[float, List[float]] = 0.008,
+            rho: Union[float, List[float]] = 0.2,
+            sigma: Union[float, List[float]] = 0.1,
+            settlementDays=0,
+            steps=2,
+            rng = "pseudorandom",  # could use "lowdiscrepancy"
+            numPaths = 100000,
+    ):
+        df = self._set_heston(
+            codes = codes,
+            v0 = v0,
+            kappa = kappa,
+            theta = theta,
+            rho = rho,
+            sigma = sigma,
+            settlementDays = settlementDays
+        )
+        processes = df['processes'].values
+        options = df['options'].values
+
+        engines = [
+            ql.MCEuropeanHestonEngine(process, rng, steps, requiredSamples=numPaths)
+            for process in processes
+        ]
+
+        [option.setPricingEngine(engine) for engine, option in zip(engines, options)]
+
+        return
+
+    def _set_black_scholes_merton(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            implied_volitilities: Union[float, List[float], np.ndarray] = None,
+            settlementDays=0,
+            is_merton=True,
+    ):
+        if codes is None:
+            codes = self.options_df.index.get_level_values('codes').values
+        if implied_volitilities is None:
+            implied_volitilities = self.stock.volatility
+
+        (codes,
+         price_quotes,
+         vol_quotes,
+         dividend_quotes) = check_list_length(
+            codes,
+            self.stock.price_quote,
+            implied_volitilities,
+            self.stock.dividend_quote)
+
+        if not isinstance(vol_quotes[0], ql.SimpleQuote):
+            vol_quotes = [ql.SimpleQuote(i) for i in vol_quotes]
+
+        processes = black_scholes_merton_model(
+            ql_calendar=self.ql_calendar,
+            price_quotes=price_quotes,
+            vol_quotes=vol_quotes,
+            dividend_rate_quotes=dividend_quotes,
+            settlementDays=settlementDays,
+            is_merton=is_merton,
+        )
+
+        self.options_df.loc[
+            codes, ['implied_volatility', 'processes']
+        ] = np.array([vol_quotes, processes]).T
+
+        return self.options_df.loc[codes]
+
+    def _set_heston(
+            self,
+            codes: Union[list, np.ndarray] = None,
+            v0: Union[float, List[float]] = 0.005,
+            kappa: Union[float, List[float]] = 0.8,
+            theta: Union[float, List[float]] = 0.008,
+            rho: Union[float, List[float]] = 0.2,
+            sigma: Union[float, List[float]] = 0.1,
+            settlementDays=0,
+    ):
+        if codes is None:
+            codes = self.options_df.index.get_level_values('codes').values
+        (codes,
+         price_quotes,
+         v0,
+         kappa,
+         theta,
+         rho,
+         sigma,
+         dividend_quotes
+         ) = check_list_length(
+            codes,
+            self.stock.price_quote,
+            v0,
+            kappa,
+            theta,
+            rho,
+            sigma,
+            self.stock.dividend_quote,
+        )
+
+        processes = heston_model(
+            ql_calendar=self.ql_calendar,
+            price_quotes=price_quotes,
+            v0=v0,
+            kappa=kappa,
+            theta=theta,
+            rho=rho,
+            sigma=sigma,
+            dividend_rate_quotes=dividend_quotes,
+            settlementDays=settlementDays,
+        )
+
+        self.options_df.loc[
+            codes, ['processes']
+        ] = np.array([processes]).T
+
+        return self.options_df.loc[codes]
 
 
     # def european_option(
@@ -156,6 +420,10 @@ class QlEuropeanOptions:
     def impliedVolatility(self, NPVs):
         return [self._impliedVolatility(option, npv) for option, npv in zip(self.options_df['options'], NPVs)]
 
+    def set_volatility(self, new_volatility):
+        return
+
+
     def NPV(self, options: [pd.Series, pd.DataFrame] = None):
 
         if options is None:
@@ -165,7 +433,7 @@ class QlEuropeanOptions:
         elif isinstance(options, pd.DataFrame):
             options = options['options'].values
 
-        return np.array([i.NPV() for i in options])
+        return np.array([self._npv(i) for i in options])
 
     def delta(
             self,
@@ -179,7 +447,7 @@ class QlEuropeanOptions:
             options = options['options'].values
 
         try:
-            delta = np.array([i.delta() for i in options])
+            delta = np.array([self._delta(i) for i in options])
         except:
             raise 'current option type do not have Quantlib default delta, please use numerical_differentiation=True to calculate'
         return delta
@@ -226,7 +494,9 @@ class QlEuropeanOptions:
         df['vega'] = [i.vega() for i in df['options']]
         return df
 
-    def _payoff_and_exercise(self, codes, strike_prices, option_types, maturity_dates, qlExercise):
+    def _payoff_and_exercise(
+            self, codes, strike_prices, option_types, maturity_dates, qlExercise
+    ):
 
         all_types = [ql.Option.Call if i =='call' else ql.Option.Put for i in option_types]
         all_codes = [code
@@ -248,6 +518,14 @@ class QlEuropeanOptions:
         )
         return new_df
 
+    def _codes_get_option_df(self, codes:Union[list, np.ndarray, pd.DataFrame]=None):
+        if codes is None:
+            return self.options_df
+        elif isinstance(codes, (list, np.ndarray)):
+            return self.options_df.loc[codes]
+        elif isinstance(codes, pd.DataFrame):
+            return codes
+
     def _codes_get_options(self, codes:Union[list, np.ndarray, pd.DataFrame]=None):
         if codes is None:
             return self.options_df['options'].values
@@ -261,6 +539,18 @@ class QlEuropeanOptions:
             return option.impliedVolatility(npv, self.stock.process)
         except:
             # print('fail calculate impliedVolatility')
+            return np.nan
+
+    def _npv(self, option):
+        try:
+            return option.NPV()
+        except:
+            return np.nan
+
+    def _delta(self, option):
+        try:
+            return option.delta()
+        except:
             return np.nan
 
 if __name__ == '__main__':
@@ -277,11 +567,15 @@ if __name__ == '__main__':
     options = QlEuropeanOptions(s_1)
 
     #
-    prices = 100
+    prices = [100, 110]
     options.add_options(
         'put',
         prices,
         ql.Date(3,2,2023),
+    )
+    options.set_analytic_bs_engine(
+            implied_volitilities = [0.6, 0.7],
+            settlementDays=0,
     )
     options.analytic_engines()
     put = options.option('s_1230203P00100000')

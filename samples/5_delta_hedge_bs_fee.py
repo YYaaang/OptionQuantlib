@@ -67,7 +67,7 @@ print("Days between start and end:", ql_calendar.calendar.businessDaysBetween(st
 #%%
 # Initialize Black-Scholes stock model and European call option
 ql_stocks = QlStocks(ql_calendar)
-ql_stocks.add_black_scholes(stock_code, S0, sigma=sigma)
+ql_stocks.add_black_scholes(stock_code, S0, volatility=sigma)
 stock_1 = ql_stocks.stock(stock_code)
 
 ql_options = QlEuropeanOptions(stock_1)

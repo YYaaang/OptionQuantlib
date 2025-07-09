@@ -149,6 +149,18 @@ def set_fd_engine(process_type,
     else:
         return ql.FdBlackScholesVanillaEngine(process, tGrid, xGrid)
 
+def set_mc_engine(process_type,
+                  process,
+                  steps=2,
+                  rng="pseudorandom",  # could use "lowdiscrepancy"
+                  numPaths=100000,
+                  ):
+
+    if process_type == 'heston':
+        return ql.MCEuropeanHestonEngine(process, rng, steps, requiredSamples=numPaths)
+    else:
+        return ql.MCEuropeanEngine(process, rng, steps, requiredSamples=numPaths)
+
 if __name__ == '__main__':
     # 生成示例数据
     x = np.linspace(0, 10, 100)
